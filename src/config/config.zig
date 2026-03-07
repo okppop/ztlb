@@ -25,6 +25,11 @@ pub const Config = struct {
     }
 
     fn vaildate_config(self: Config, allocator: std.mem.Allocator) !void {
+        if (self.bind.len == 0) {
+            std.log.err("config.bind is empty", .{});
+            return error.ConfigBindEmpty;
+        }
+
         var bind_address_map: std.StringHashMap(bool) = .init(allocator);
         defer bind_address_map.deinit();
         var target_address_map: std.StringHashMap(bool) = .init(allocator);
@@ -64,6 +69,11 @@ pub const Config = struct {
     }
 
     fn check_duplicate_nested_slice(map: *std.StringHashMap(bool), s: []const []const u8) !void {
+        if (s.len == 0) {
+            std.log.err("config.bind.*.forward is empty", .{});
+            return error.ConfigForwardEmpty;
+        }
+
         map.clearAndFree();
         for (s) |target| {
             if (map.contains(target)) {
@@ -75,6 +85,11 @@ pub const Config = struct {
     }
 
     fn check_duplicate_ForwardWeighted_slice(map: *std.StringHashMap(bool), s: []const ForwardWeighted) !void {
+        if (s.len == 0) {
+            std.log.err("config.bind.*.forward is empty", .{});
+            return error.ConfigForwardEmpty;
+        }
+
         map.clearAndFree();
         for (s) |item| {
             if (map.contains(item.target)) {
@@ -147,7 +162,7 @@ pub fn get_config(allocator: std.mem.Allocator) !Config {
     var diag = zon.parse.Diagnostics{};
     defer diag.deinit(allocator);
 
-    const config = zon.parse.fromSlice(
+    var config = zon.parse.fromSlice(
         Config,
         allocator,
         conf_data_null_terminated,
@@ -160,6 +175,7 @@ pub fn get_config(allocator: std.mem.Allocator) !Config {
         std.log.err("parse config file error: {}", .{err});
         return error.ConfigParseError;
     };
+    errdefer config.deinit(allocator);
 
     try config.vaildate_config(allocator);
 
